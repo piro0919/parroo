@@ -1,54 +1,60 @@
 @import "tailwindcss";
 
-/* 色はアプリのアイコンから引く。若葉色から深い緑へのグラデーションと、鸚鵡の白 */
+/* 手本は Replay の Sleeve の LP。暗い地に、角の丸い一段明るいカードを置く。
+   差し色はアプリのアイコンの若葉色と、鸚鵡の白 */
 @theme {
-  --color-cream: #f5fbf6;
-  --color-cream-deep: #dff2e5;
-  --color-ink: #0f2a1f;
-  --color-line: #c9e6d3;
+  --color-night: #111211;
+  --color-card: #1b1d1c;
+  --color-card-line: rgb(255 255 255 / 0.07);
+  --color-mute: #a3a8a5;
+  --color-faint: #6c726e;
   --color-sprout: #3ccb7f;
   --color-leaf: #17a463;
   --color-leaf-deep: #0b5e45;
-  --color-forest: #0a1a14;
   --color-amber: #ffb23e;
 }
 
 html {
   scroll-behavior: smooth;
+  color-scheme: dark;
 }
 
 body {
-  background: var(--color-cream);
-  color: var(--color-ink);
+  background: var(--color-night);
+  color: #f2f4f3;
 
   /* 日本語を語のまとまりで折り返す。これが無いと見出しが「を、」や
      「キ／ーボード」で割れる。対応していないブラウザでは従来どおり */
   word-break: auto-phrase;
 }
 
-/* 見出しの書体。角の立った太字（Hawky と同じ） */
-.display {
-  font-family: var(--font-display), var(--font-body), sans-serif;
-  letter-spacing: 0.01em;
+/* Sleeve と同じく、Mac では SF Pro とヒラギノで出す。それ以外は Noto Sans JP */
+.font-system {
+  font-family:
+    -apple-system, BlinkMacSystemFont, "SF Pro Text", "Hiragino Sans", var(--font-noto), sans-serif;
 }
 
-/* アイコンと同じ向きのグラデーション */
-.sky {
-  background: linear-gradient(
-    160deg,
-    var(--color-sprout) 0%,
-    var(--color-leaf) 55%,
-    var(--color-leaf-deep) 100%
-  );
+/* 製品名。銀色の縦のグラデーション */
+.silver {
+  background: linear-gradient(180deg, #ffffff 0%, #c9cfcb 70%, #9aa19d 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }
 
-/* しゃべる鸚鵡の吹き出し。区画の上に、淡い丸をいくつか浮かべる */
-.chatter {
-  position: absolute;
-  inset: 0;
+/* デスクトップの壁紙。深い緑の上に、若葉色の波を重ねる */
+.wallpaper {
   background:
-    radial-gradient(circle at 12% 18%, rgb(255 255 255 / 0.1) 0 70px, transparent 71px),
-    radial-gradient(circle at 88% 12%, rgb(255 255 255 / 0.08) 0 110px, transparent 111px),
-    radial-gradient(circle at 78% 88%, rgb(255 255 255 / 0.07) 0 90px, transparent 91px);
-  pointer-events: none;
+    radial-gradient(120% 80% at 80% 0%, rgb(60 203 127 / 0.28) 0%, transparent 60%),
+    linear-gradient(180deg, #0d3b30 0%, #0a2c25 100%);
+}
+
+/* 区画の見出しの上の小さな札。英語は大文字で字間を空け、日本語は空けすぎない */
+.eyebrow {
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+:lang(ja) .eyebrow {
+  letter-spacing: 0.04em;
 }

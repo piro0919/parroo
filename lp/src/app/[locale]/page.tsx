@@ -2,8 +2,8 @@ import Image from "next/image";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import type { ReactNode } from "react";
 import { Link } from "@/i18n/navigation";
+import { DesktopMock, StatusLines, Waves } from "./desktop-mock";
 import { LanguageSwitch } from "./language-switch";
-import { MenuMock } from "./menu-mock";
 
 const REPO = "https://github.com/piro0919/parroo";
 const DOWNLOAD = `${REPO}/releases/latest`;
@@ -15,23 +15,60 @@ type PageProps = {
   params: Promise<{ locale: string }>;
 };
 
-function DownloadButton({ children }: { children: ReactNode }) {
+/// 白い主ボタンと、縁だけの副ボタン。Sleeve の「Mac App Store」「Buy Directly」の対
+function Buttons({ download }: { download: string }) {
   return (
-    <a
-      className="inline-block rounded-full bg-white px-9 py-4 font-extrabold text-[var(--color-leaf-deep)] shadow-[0_10px_0_0_rgba(4,40,28,0.35)] transition active:translate-y-1 active:shadow-[0_4px_0_0_rgba(4,40,28,0.35)]"
-      href={DOWNLOAD}
-    >
-      {children}
-    </a>
+    <div className="flex flex-wrap justify-center gap-3">
+      <a
+        className="inline-flex h-14 items-center rounded-full bg-white px-7 font-semibold text-[17px] text-black transition hover:bg-white/90"
+        href={DOWNLOAD}
+      >
+        {download}
+      </a>
+      <a
+        className="inline-flex h-14 items-center rounded-full px-7 font-semibold text-[17px] text-white ring-1 ring-white/20 transition hover:bg-white/5"
+        href="#install"
+      >
+        Homebrew
+      </a>
+    </div>
   );
 }
 
-/// ターミナルに貼る1行。横に長いので、狭い画面では中で横に流す
-function Command({ children }: { children: string }) {
+/// 区画の見出し。色の付いた小さな札と、大きな1行
+function SectionTitle({
+  eyebrow,
+  title,
+  color,
+}: {
+  eyebrow: string;
+  title: string;
+  color: string;
+}) {
   return (
-    <pre className="overflow-x-auto rounded-2xl bg-black/40 px-5 py-4 text-left font-mono text-[13px] text-white/90 leading-relaxed">
-      <code>{children}</code>
-    </pre>
+    <div className="flex flex-col items-center gap-4 text-center">
+      <span className={`eyebrow font-semibold text-[13px] ${color}`}>{eyebrow}</span>
+      <h2 className="text-balance font-bold text-4xl tracking-[-0.02em] sm:text-5xl">{title}</h2>
+    </div>
+  );
+}
+
+function Card({ children, className = "" }: { children: ReactNode; className?: string }) {
+  return (
+    <div
+      className={`overflow-hidden rounded-[24px] bg-[var(--color-card)] ring-1 ring-[var(--color-card-line)] ${className}`}
+    >
+      {children}
+    </div>
+  );
+}
+
+function CardText({ title, body }: { title: string; body: string }) {
+  return (
+    <div className="flex flex-col gap-3">
+      <h3 className="font-semibold text-[22px] tracking-[-0.01em]">{title}</h3>
+      <p className="text-[17px] text-[var(--color-mute)] leading-relaxed">{body}</p>
+    </div>
   );
 }
 
@@ -40,134 +77,190 @@ export default async function Page({ params }: PageProps) {
   setRequestLocale(locale);
 
   const t = await getTranslations();
-  const flow = t.raw("flow.steps") as Step[];
   const install = t.raw("install.steps") as Step[];
-  const features = ["reset", "conversations", "models", "language", "stale"] as const;
+
+  // メニューバーに出せる組み合わせの見本。表記は CLAUDE.md の項目の表のとおり
+  const variants = [
+    ["1w: 69%", t("menu.statusDate")],
+    ["5h: 42%", "5h: 1h 20m"],
+    ["1w: 2d 5h", "5h: 16:30"],
+    ["Opus: 30%", "Sonnet: 20%"],
+    ["1w: 69%", "$12/$50"],
+  ] as const;
 
   return (
-    <>
+    <div className="mx-auto max-w-[1200px] px-4 sm:px-10">
+      {/* 上の帯 */}
+      <header className="flex items-center justify-between py-8">
+        <Link className="flex items-center gap-2.5" href="/">
+          <Image alt="" className="h-8 w-8" height={64} src="/icon.png" width={64} />
+          <span className="font-bold text-lg tracking-[-0.01em]">Parroo</span>
+        </Link>
+        <nav className="flex items-center gap-6 text-[15px] text-[var(--color-mute)]">
+          <a className="hidden transition hover:text-white sm:inline" href={`${REPO}/releases`}>
+            {t("footer.releases")}
+          </a>
+          <a className="hidden transition hover:text-white sm:inline" href={REPO}>
+            GitHub
+          </a>
+          <LanguageSwitch />
+        </nav>
+      </header>
+
       {/* 見出し */}
-      <section className="sky relative overflow-hidden px-6 pt-16 pb-24 text-white">
-        <div className="chatter" />
-        <div className="relative mx-auto flex max-w-5xl flex-col items-center gap-14 lg:flex-row">
-          <div className="flex flex-1 flex-col items-center gap-6 text-center lg:items-start lg:text-left">
-            <div className="flex items-center gap-3">
-              <span className="rounded-full bg-white/20 px-4 py-1 font-bold text-sm backdrop-blur">
-                macOS
-              </span>
-              <LanguageSwitch />
-            </div>
-            <div className="flex items-center gap-4">
-              <Image
-                alt=""
-                className="h-16 w-16 drop-shadow-lg"
-                height={128}
-                priority
-                src="/icon.png"
-                width={128}
-              />
-              <span className="display text-4xl">Parroo</span>
-            </div>
-            <h1 className="display text-balance text-4xl leading-[1.3] sm:text-5xl">
-              {t("hero.tagline")}
-            </h1>
-            <p className="max-w-md text-lg text-white/90 leading-relaxed">{t("hero.lead")}</p>
-            <div className="flex flex-col items-center gap-3 lg:items-start">
-              <DownloadButton>{t("hero.download")}</DownloadButton>
-              <p className="text-sm text-white/75">{t("hero.requirement")}</p>
-            </div>
-          </div>
+      <section className="flex flex-col items-center pt-6">
+        <div className="relative w-full max-w-[900px]">
+          <DesktopMock />
+          <Image
+            alt=""
+            className="-translate-x-1/2 absolute bottom-0 left-1/2 h-32 w-32 translate-y-1/2 drop-shadow-[0_20px_40px_rgba(0,0,0,0.6)] sm:h-44 sm:w-44"
+            height={512}
+            priority
+            src="/icon-512.png"
+            width={512}
+          />
+        </div>
 
-          <div className="flex flex-1 justify-center">
-            <MenuMock />
+        <div className="flex flex-col items-center gap-6 pt-28 text-center sm:pt-36">
+          <h1 className="silver font-bold text-7xl tracking-[-0.04em] sm:text-[104px] sm:leading-none">
+            Parroo
+          </h1>
+          <p className="text-balance font-bold text-3xl tracking-[-0.02em] sm:text-5xl">
+            {t("hero.tagline")}
+          </p>
+          <p className="max-w-2xl text-pretty text-[19px] text-[var(--color-mute)] leading-relaxed sm:text-[21px]">
+            {t("hero.lead")}
+          </p>
+          <div className="pt-4">
+            <Buttons download={t("hero.download")} />
           </div>
+          <p className="text-[14px] text-[var(--color-faint)]">{t("hero.requirement")}</p>
         </div>
       </section>
 
-      {/* 流れ */}
-      <section className="px-6 py-20">
-        <div className="mx-auto flex max-w-5xl flex-col gap-12">
-          <h2 className="display text-center text-3xl">{t("flow.title")}</h2>
-          <ol className="grid gap-6 sm:grid-cols-3">
-            {flow.map((step, index) => (
-              <li
-                className="flex flex-col gap-3 rounded-[28px] border-2 border-[var(--color-line)] bg-white p-7 shadow-sm"
-                key={step.title}
-              >
-                <span className="display flex h-11 w-11 items-center justify-center rounded-full bg-[var(--color-leaf)] text-white text-xl">
-                  {index + 1}
-                </span>
-                <h3 className="font-extrabold text-lg">{step.title}</h3>
-                <p className="leading-relaxed opacity-75">{step.body}</p>
-              </li>
-            ))}
-          </ol>
-        </div>
-      </section>
+      {/* メニューバー */}
+      <section className="flex flex-col gap-14 pt-40">
+        <SectionTitle
+          color="text-[var(--color-sprout)]"
+          eyebrow={t("flow.eyebrow")}
+          title={t("flow.title")}
+        />
 
-      {/* できること */}
-      <section className="bg-[var(--color-cream-deep)] px-6 py-20">
-        <div className="mx-auto flex max-w-5xl flex-col gap-12">
-          <h2 className="display text-center text-3xl">{t("features.title")}</h2>
-          <div className="grid gap-6 sm:grid-cols-2">
-            {features.map((key, index) => (
+        <div className="wallpaper relative overflow-hidden rounded-[28px] ring-1 ring-white/10">
+          <Waves />
+          <div className="relative flex flex-wrap items-center justify-center gap-4 px-6 py-20 sm:gap-6 sm:py-28">
+            {variants.map(([first, second]) => (
               <div
-                className={`flex flex-col gap-3 rounded-[28px] bg-white p-8 shadow-sm ${
-                  // 数が奇数なら、最後の1つを横いっぱいに置いて半端を残さない
-                  features.length % 2 === 1 && index === features.length - 1 ? "sm:col-span-2" : ""
-                }`}
-                key={key}
+                className="rounded-xl bg-black/35 px-4 py-2.5 ring-1 ring-white/10 backdrop-blur-md"
+                key={`${first}-${second}`}
               >
-                <h3 className="font-extrabold text-xl">{t(`features.${key}.title`)}</h3>
-                <p className="leading-relaxed opacity-75">{t(`features.${key}.body`)}</p>
+                <StatusLines first={first} large second={second} />
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* 入れ方 */}
-      <section className="relative overflow-hidden bg-[var(--color-forest)] px-6 py-20 text-white">
-        <div className="relative mx-auto flex max-w-3xl flex-col gap-10">
-          <h2 className="display text-center text-3xl">{t("install.title")}</h2>
-          <ol className="flex flex-col gap-8">
-            {install.map((step, index) => (
-              <li className="flex gap-5" key={step.title}>
-                <span className="display flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--color-leaf)] text-lg">
-                  {index + 1}
-                </span>
-                <div className="flex min-w-0 flex-1 flex-col gap-3">
-                  <h3 className="font-extrabold text-lg">{step.title}</h3>
-                  <p className="text-white/80 leading-relaxed">{step.body}</p>
-                  {index === 0 && <Command>{BREW}</Command>}
-                </div>
-              </li>
-            ))}
-          </ol>
-          <p className="text-center text-sm text-white/70 leading-relaxed">{t("install.note")}</p>
-          <div className="flex justify-center">
-            <DownloadButton>{t("install.cta")}</DownloadButton>
-          </div>
+      {/* できること */}
+      <section className="flex flex-col gap-14 pt-40">
+        <SectionTitle
+          color="text-[var(--color-amber)]"
+          eyebrow={t("features.eyebrow")}
+          title={t("features.title")}
+        />
+
+        <div className="grid gap-6 md:grid-cols-2">
+          <Card className="flex flex-col justify-between gap-10 p-9 md:col-span-2 md:flex-row md:items-center">
+            <div className="md:max-w-[360px]">
+              <CardText body={t("features.reset.body")} title={t("features.reset.title")} />
+            </div>
+            <div className="flex flex-col gap-1 md:text-right">
+              <span className="whitespace-nowrap font-bold text-5xl tabular-nums tracking-[-0.03em]">
+                {t("menu.resetDate")}
+              </span>
+              <span className="text-[17px] text-[var(--color-sprout)]">{t("menu.resetIn")}</span>
+            </div>
+          </Card>
+
+          <Card className="flex flex-col gap-8 p-9">
+            <CardText
+              body={t("features.conversations.body")}
+              title={t("features.conversations.title")}
+            />
+            <div className="flex flex-col gap-1 rounded-2xl bg-black/30 p-4 text-[14px]">
+              <span className="font-semibold text-[12px] text-white/45">parroo</span>
+              <div className="flex justify-between gap-4">
+                <span className="truncate">{t("menu.conversationA")}</span>
+                <span className="tabular-nums">182,431</span>
+              </div>
+              <div className="flex justify-between gap-4">
+                <span className="truncate">{t("menu.conversationB")}</span>
+                <span className="tabular-nums">3,108</span>
+              </div>
+            </div>
+          </Card>
+
+          <Card className="flex flex-col gap-8 p-9">
+            <CardText body={t("features.stale.body")} title={t("features.stale.title")} />
+            <span className="w-fit rounded-full bg-black/40 px-4 py-1.5 text-[15px] text-[var(--color-mute)] tabular-nums">
+              {t("menu.updated")}
+            </span>
+          </Card>
         </div>
       </section>
 
-      <footer className="flex justify-center gap-6 bg-[var(--color-cream)] px-6 py-10 text-sm">
-        <a className="font-semibold opacity-60 hover:opacity-100" href={REPO}>
-          {t("footer.source")}
-        </a>
-        <a className="font-semibold opacity-60 hover:opacity-100" href={`${REPO}/releases`}>
-          {t("footer.releases")}
-        </a>
-        <Link className="font-semibold opacity-60 hover:opacity-100" href="/privacy">
-          {t("footer.privacy")}
-        </Link>
-        <a
-          className="font-semibold opacity-60 hover:opacity-100"
-          href="https://buymeacoffee.com/piro0919"
-        >
-          Buy Me a Coffee
-        </a>
+      {/* 入れ方 */}
+      <section className="flex scroll-mt-10 flex-col gap-14 pt-40" id="install">
+        <SectionTitle
+          color="text-[var(--color-sprout)]"
+          eyebrow={t("install.eyebrow")}
+          title={t("install.title")}
+        />
+
+        <div className="grid gap-6 md:grid-cols-3">
+          {install.map((step, index) => (
+            <Card className="flex flex-col gap-6 p-9" key={step.title}>
+              <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-[var(--color-leaf)] font-bold text-lg tabular-nums">
+                {index + 1}
+              </span>
+              <CardText body={step.body} title={step.title} />
+            </Card>
+          ))}
+        </div>
+
+        <pre className="mx-auto w-full max-w-xl overflow-x-auto rounded-2xl bg-[var(--color-card)] px-6 py-4 text-center font-mono text-[14px] text-white/85 ring-1 ring-[var(--color-card-line)]">
+          <code>{BREW}</code>
+        </pre>
+
+        <div className="flex flex-col items-center gap-5 text-center">
+          <Buttons download={t("install.cta")} />
+          <p className="max-w-xl text-[14px] text-[var(--color-faint)] leading-relaxed">
+            {t("install.note")}
+          </p>
+        </div>
+      </section>
+
+      {/* 下の帯 */}
+      <footer className="mt-40 flex flex-col gap-6 border-white/10 border-t py-10 text-[14px] text-[var(--color-mute)] sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-2.5">
+          <Image alt="" className="h-6 w-6" height={64} src="/icon.png" width={64} />
+          <span className="font-semibold text-white">Parroo</span>
+        </div>
+        <div className="flex flex-wrap gap-x-6 gap-y-2">
+          <a className="transition hover:text-white" href={REPO}>
+            {t("footer.source")}
+          </a>
+          <a className="transition hover:text-white" href={`${REPO}/releases`}>
+            {t("footer.releases")}
+          </a>
+          <Link className="transition hover:text-white" href="/privacy">
+            {t("footer.privacy")}
+          </Link>
+          <a className="transition hover:text-white" href="https://buymeacoffee.com/piro0919">
+            Buy Me a Coffee
+          </a>
+        </div>
       </footer>
-    </>
+    </div>
   );
 }

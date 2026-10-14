@@ -7,7 +7,8 @@
     "tagline": "When does my week reset? Parroo tells you.",
     "lead": "Claude Code's usage stays hidden until you open /usage or the page on claude.ai. Parroo keeps your usage and the next reset in the menu bar, all the time.",
     "download": "Download for free",
-    "requirement": "macOS 14 or later · Apple silicon"
+    "requirement": "macOS 14 or later · Apple silicon",
+    "homebrew": "Homebrew"
   },
   "menu": {
     "week": "Weekly limit",
@@ -24,66 +25,50 @@
     "updated": "Updated at 10:42",
     "settings": "Settings…",
     "quit": "Quit",
-    "statusDate": "1w: Oct 17 14:00"
+    "statusDate": "1w: Oct 17 14:00",
+    "clock": "Thu Oct 15 10:42",
+    "resetDate": "Oct 17 14:00",
+    "resetIn": "in 2 days 5 hours"
   },
   "flow": {
-    "title": "What you want, in two lines",
-    "steps": [
-      {
-        "title": "Pick two",
-        "body": "Choose up to two of nine things for the menu bar: weekly usage, the weekly reset date, time left in the 5-hour limit, and more."
-      },
-      {
-        "title": "Always in view",
-        "body": "Your two picks sit next to the parrot, one above the other. Keep an eye on your limits without stopping what you are doing."
-      },
-      {
-        "title": "Click for the rest",
-        "body": "The menu spells out usage and the time until each reset, for both the weekly and the 5-hour limit."
-      }
-    ]
+    "eyebrow": "Menu bar",
+    "title": "What you want, in two lines."
   },
   "features": {
-    "title": "What it does",
+    "title": "Everything you need, nothing more.",
     "reset": {
       "title": "Know when you reset",
-      "body": "See the exact date and time your weekly limit resets. Next to your usage, it tells you at a glance whether you will make it."
+      "body": "See the exact date and time your weekly limit resets."
     },
     "conversations": {
       "title": "Tokens per conversation",
-      "body": "Every Claude Code conversation you have open, grouped by folder, with the tokens it has used so far — every digit, not rounded."
-    },
-    "models": {
-      "title": "Per-model limits too",
-      "body": "If your plan has weekly limits per model, they are listed as well. With extra usage turned on, you can show this month's spend."
-    },
-    "language": {
-      "title": "English and Japanese",
-      "body": "Parroo speaks both. It follows your Mac's language, or pick one in Settings."
+      "body": "Tokens used by each conversation you have open."
     },
     "stale": {
       "title": "Never trust stale numbers",
-      "body": "The menu shows when usage was last fetched. If fetching fails, the top of the menu says what will fix it."
-    }
+      "body": "The menu shows when usage was last fetched."
+    },
+    "eyebrow": "Features"
   },
   "install": {
-    "title": "Getting started",
+    "title": "Up and running in three steps.",
     "steps": [
       {
         "title": "Install",
-        "body": "Download the DMG and drag Parroo into Applications. Homebrew works too."
+        "body": "Drag Parroo from the DMG into Applications."
       },
       {
         "title": "Let it open",
-        "body": "Parroo is not signed by a registered Apple developer, so the first launch is blocked. In System Settings → Privacy & Security, click Open Anyway."
+        "body": "In System Settings → Privacy & Security, click Open Anyway."
       },
       {
         "title": "Allow the keychain",
-        "body": "macOS asks whether Parroo may use \"Claude Code-credentials\". Enter your login password and click Always Allow."
+        "body": "When macOS asks about the keychain, click Always Allow."
       }
     ],
     "note": "You need to be signed in to Claude Code with a Claude subscription (Pro, Max, Team or Enterprise).",
-    "cta": "Download for free"
+    "cta": "Download for free",
+    "eyebrow": "Get started"
   },
   "footer": {
     "source": "Source code",

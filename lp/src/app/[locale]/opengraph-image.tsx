@@ -14,10 +14,10 @@ export function generateStaticParams(): { locale: string }[] {
 }
 
 /* 出るのは kk-web の一覧で176px、X のカードで500px 前後。
-   その大きさで残るのはアイコンと名前と1行だけ。色はアイコンから取る */
-const FOREST = "#0a1a14";
-const AMBER = "#ffb23e";
-const WHITE = "#f5fbf6";
+   その大きさで残るのはアイコンと名前と1行だけ。地はサイトと同じ暗い色 */
+const NIGHT = "#111211";
+const SPROUT = "#3ccb7f";
+const WHITE = "#f2f4f3";
 
 export default async function OgImage({
   params,
@@ -26,11 +26,11 @@ export default async function OgImage({
 }): Promise<ImageResponse> {
   const { locale } = await params;
   const isJa = locale === "ja";
-  /* 見出しの書体はサイトと同じ Dela Gothic One。使う文字だけに絞ったものを
-     同梱している。文言を変えたら assets/README.md の手順で作り直す */
+  /* 書体は Noto Sans JP の太字。使う文字だけに絞ったものを同梱している。
+     文言を変えたら assets/README.md の手順で作り直す */
   const [icon, font] = await Promise.all([
     readFile(join(process.cwd(), "public/icon.png")),
-    readFile(join(process.cwd(), "assets/DelaGothicOne-subset.ttf")),
+    readFile(join(process.cwd(), "assets/NotoSansJP-Bold-subset.ttf")),
   ]);
   const iconSrc = `data:image/png;base64,${icon.toString("base64")}`;
 
@@ -39,10 +39,10 @@ export default async function OgImage({
       style={{
         alignItems: "center",
         /* 地をアイコンと同じ色にすると、アイコンの輪郭が溶けて消える。
-           濃い地に、アイコンの若葉色と深い緑を光として置く */
-        background: FOREST,
+           サイトと同じ暗い地に、アイコンの若葉色を光として薄く置く */
+        background: NIGHT,
         backgroundImage:
-          "radial-gradient(55% 70% at 12% 20%, rgba(60,203,127,0.42) 0%, rgba(10,26,20,0) 62%), radial-gradient(60% 70% at 95% 95%, rgba(11,94,69,0.6) 0%, rgba(10,26,20,0) 60%)",
+          "radial-gradient(60% 80% at 20% 30%, rgba(60,203,127,0.22) 0%, rgba(17,18,17,0) 65%)",
         display: "flex",
         gap: 56,
         height: "100%",
@@ -53,15 +53,15 @@ export default async function OgImage({
       {/* biome-ignore lint/performance/noImgElement: next/image is not available in ImageResponse */}
       <img alt="" height={250} src={iconSrc} width={250} />
       <div style={{ display: "flex", flexDirection: "column" }}>
-        <div style={{ color: WHITE, fontSize: 118 }}>Parroo</div>
-        <div style={{ color: AMBER, display: "flex", fontSize: 34, marginTop: 14 }}>
+        <div style={{ color: WHITE, fontSize: 124, letterSpacing: -4 }}>Parroo</div>
+        <div style={{ color: SPROUT, display: "flex", fontSize: 34, marginTop: 14 }}>
           {isJa ? "週の枠、いつリセット？" : "When does my week reset?"}
         </div>
       </div>
     </div>,
     {
       ...size,
-      fonts: [{ data: font, name: "Dela Gothic One", style: "normal", weight: 400 }],
+      fonts: [{ data: font, name: "Noto Sans JP", style: "normal", weight: 700 }],
     },
   );
 }
