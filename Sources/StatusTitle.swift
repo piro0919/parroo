@@ -10,6 +10,8 @@ enum StatusTitle {
     /// メニューバーの厚み。これが上限
     private static let height: CGFloat = 22
     private static let iconSize: CGFloat = 18
+    /// 文字の左右の余白。字の形が送り幅からはみ出しても、絵の端で切れないように
+    private static let inset: CGFloat = 1
 
     /// 2行のときの書体。上下で同じにする
     private static let stackedFont = NSFont.monospacedDigitSystemFont(ofSize: 10, weight: .medium)
@@ -39,7 +41,7 @@ enum StatusTitle {
             ? [height - (height - cap * 2 - 4) / 2 - cap, (height - cap * 2 - 4) / 2]
             : [(height - cap) / 2]
 
-        let width = texts.isEmpty ? iconSize : ceil(widths.max() ?? 0)
+        let width = texts.isEmpty ? iconSize : ceil((widths.max() ?? 0) + inset * 2)
 
         let image = NSImage(size: NSSize(width: width, height: height), flipped: false) { _ in
             if texts.isEmpty {
@@ -50,7 +52,7 @@ enum StatusTitle {
             context.textMatrix = .identity
             // 2行は左で揃える。ラベル（1w: など）の頭が上下で並ぶ
             for (text, baseline) in zip(texts, baselines) {
-                context.textPosition = CGPoint(x: 0, y: baseline)
+                context.textPosition = CGPoint(x: inset, y: baseline)
                 CTLineDraw(text, context)
             }
             return true

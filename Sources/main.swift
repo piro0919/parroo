@@ -153,8 +153,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func drawStatus() {
         guard let button = item.button else { return }
-        let lines = Preferences.lines.filter { Format.isShown($0, usage: usage) }
-            .map { Format.statusLine($0, usage: usage) }
+        let lines = Format.statusLines(Preferences.lines, usage: usage)
         let image = StatusTitle.image(icon: statusIcon, lines: lines)
         image.accessibilityDescription = ([Strings.statusDescription] + lines).joined(separator: ", ")
         button.image = image

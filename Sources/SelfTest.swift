@@ -1,4 +1,4 @@
-import Foundation
+import AppKit
 
 /// 画面を出さずに、読み取りと書き方の規則だけを確かめる。`./Parroo --selftest` で走る。
 /// キーチェーンにも通信にも触らないので、CI のランナーで動く
@@ -181,6 +181,21 @@ enum SelfTest {
             check(
                 headers["/Users/piro/work/app"] == "work/app" && headers["/Users/piro/personal/app"] == "personal/app",
                 "同じ名前のフォルダは親の名前を足して分ける")
+        }
+
+        // メニューバー。文字があれば文字だけ、無ければ鸚鵡だけ
+        do {
+            var usage = Usage()
+            usage.week = UsageWindow(percent: 69, resetsAt: nil)
+            check(Format.statusLines([.weekPercent], usage: nil).isEmpty, "まだ取れていないときは文字を出さない")
+            check(
+                Format.statusLines([.weekPercent, .extraUsage], usage: usage) == ["1w: 69%"],
+                "追加の従量課金が無い人には使用額の行を出さない")
+            check(Format.statusLines([.extraUsage], usage: usage).isEmpty, "出せる項目が無ければ文字を出さない")
+            let icon = NSImage(size: NSSize(width: 18, height: 18))
+            check(StatusTitle.image(icon: icon, lines: []).size.width == 18, "文字が無いときは鸚鵡の幅だけ")
+            // 1文字なら鸚鵡（18pt）より狭い。鸚鵡の幅を足していれば 18 を超える
+            check(StatusTitle.image(icon: icon, lines: ["1"]).size.width < 18, "文字があるときは鸚鵡の幅を足さない")
         }
 
         if failures == 0 { print("selftest: すべて通りました") }

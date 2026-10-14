@@ -122,4 +122,10 @@ enum Format {
     static func isShown(_ item: StatusItem, usage: Usage?) -> Bool {
         item != .extraUsage || usage?.extra != nil
     }
+
+    /// メニューバーに描く行。まだ一度も取れていないときは「1w: --」を並べず空にし、鸚鵡だけを出させる
+    static func statusLines(_ items: [StatusItem], usage: Usage?, now: Date = Date()) -> [String] {
+        guard let usage else { return [] }
+        return items.filter { isShown($0, usage: usage) }.map { statusLine($0, usage: usage, now: now) }
+    }
 }
