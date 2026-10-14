@@ -1,0 +1,129 @@
+{
+  "meta": {
+    "title": "Parroo — Claude Code usage in your menu bar",
+    "description": "A Mac app that shows how much of your Claude Code weekly and 5-hour limits you have used, and when they reset, right in the menu bar. It also shows the tokens each open conversation has used."
+  },
+  "hero": {
+    "tagline": "When does my week reset? Parroo tells you.",
+    "lead": "Claude Code's usage stays hidden until you open /usage or the page on claude.ai. Parroo keeps your usage and the next reset in the menu bar, all the time.",
+    "download": "Download for free",
+    "requirement": "macOS 14 or later · Apple silicon"
+  },
+  "menu": {
+    "week": "Weekly limit",
+    "fiveHour": "5-hour limit",
+    "models": "Weekly limits by model",
+    "used": "69% used",
+    "fiveUsed": "42% used",
+    "weekReset": "Resets Oct 17 14:00 · in 2 days 5 hours",
+    "fiveReset": "Resets 16:30 · in 1 hour 20 minutes",
+    "model": "Opus 30% used · Sonnet 20% used",
+    "conversationA": "Fix the settings window",
+    "conversationB": "Hello",
+    "conversationC": "Tighten the edit screen",
+    "updated": "Updated at 10:42",
+    "settings": "Settings…",
+    "quit": "Quit",
+    "statusDate": "1w: Oct 17 14:00"
+  },
+  "flow": {
+    "title": "What you want, in two lines",
+    "steps": [
+      {
+        "title": "Pick two",
+        "body": "Choose up to two of nine things for the menu bar: weekly usage, the weekly reset date, time left in the 5-hour limit, and more."
+      },
+      {
+        "title": "Always in view",
+        "body": "Your two picks sit next to the parrot, one above the other. Keep an eye on your limits without stopping what you are doing."
+      },
+      {
+        "title": "Click for the rest",
+        "body": "The menu spells out usage and the time until each reset, for both the weekly and the 5-hour limit."
+      }
+    ]
+  },
+  "features": {
+    "title": "What it does",
+    "reset": {
+      "title": "Know when you reset",
+      "body": "See the exact date and time your weekly limit resets. Next to your usage, it tells you at a glance whether you will make it."
+    },
+    "conversations": {
+      "title": "Tokens per conversation",
+      "body": "Every Claude Code conversation you have open, grouped by folder, with the tokens it has used so far — every digit, not rounded."
+    },
+    "models": {
+      "title": "Per-model limits too",
+      "body": "If your plan has weekly limits per model, they are listed as well. With extra usage turned on, you can show this month's spend."
+    },
+    "language": {
+      "title": "English and Japanese",
+      "body": "Parroo speaks both. It follows your Mac's language, or pick one in Settings."
+    },
+    "stale": {
+      "title": "Never trust stale numbers",
+      "body": "The menu shows when usage was last fetched. If fetching fails, the top of the menu says what will fix it."
+    }
+  },
+  "install": {
+    "title": "Getting started",
+    "steps": [
+      {
+        "title": "Install",
+        "body": "Download the DMG and drag Parroo into Applications. Homebrew works too."
+      },
+      {
+        "title": "Let it open",
+        "body": "Parroo is not signed by a registered Apple developer, so the first launch is blocked. In System Settings → Privacy & Security, click Open Anyway."
+      },
+      {
+        "title": "Allow the keychain",
+        "body": "macOS asks whether Parroo may use \"Claude Code-credentials\". Enter your login password and click Always Allow."
+      }
+    ],
+    "note": "You need to be signed in to Claude Code with a Claude subscription (Pro, Max, Team or Enterprise).",
+    "cta": "Download for free"
+  },
+  "footer": {
+    "source": "Source code",
+    "releases": "Release notes",
+    "privacy": "Privacy"
+  },
+  "language": {
+    "ja": "日本語",
+    "en": "English"
+  },
+  "privacy": {
+    "title": "Privacy Policy",
+    "updated": "Last updated: October 15, 2026",
+    "intro": "Parroo shows your Claude Code usage and reset times in the menu bar. That is all it does. There is no Parroo server, no analytics and no account.",
+    "sections": [
+      {
+        "title": "What it reads",
+        "body": "Parroo reads the token Claude Code saved in your keychain, to ask for your usage. It never refreshes that token. For open conversations it reads the markers Claude Code keeps in ~/.claude/sessions and the transcripts in ~/.claude/projects, and takes only each conversation's title, the start of its first prompt, and its token counts. Nothing else from your conversations is used."
+      },
+      {
+        "title": "The only destination is Anthropic",
+        "body": "Usage is fetched from the same Anthropic endpoint Claude Code's /usage uses, every two minutes and when you open the menu. The request carries only your sign-in token. Your transcripts are never sent anywhere."
+      },
+      {
+        "title": "Update checks go to GitHub",
+        "body": "Parroo checks for a new version once, at launch, and not again until the next launch. The check downloads one small file from GitHub Releases, so GitHub sees the same request — IP address included — as any other download."
+      },
+      {
+        "title": "No analytics",
+        "body": "There is no crash reporting, no usage tracking, no device identifier and no third-party SDK in the app."
+      },
+      {
+        "title": "You can check all of this",
+        "body": "Parroo is open source under the MIT License. Everything on this page can be checked against the source code. If something looks wrong, please open an issue."
+      },
+      {
+        "title": "Changes",
+        "body": "If a future version handles data differently, this page will be updated before that version is released."
+      }
+    ],
+    "back": "Back to Parroo"
+  }
+}

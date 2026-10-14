@@ -1,0 +1,54 @@
+@import "tailwindcss";
+
+/* 色はアプリのアイコンから引く。若葉色から深い緑へのグラデーションと、鸚鵡の白 */
+@theme {
+  --color-cream: #f5fbf6;
+  --color-cream-deep: #dff2e5;
+  --color-ink: #0f2a1f;
+  --color-line: #c9e6d3;
+  --color-sprout: #3ccb7f;
+  --color-leaf: #17a463;
+  --color-leaf-deep: #0b5e45;
+  --color-forest: #0a1a14;
+  --color-amber: #ffb23e;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--color-cream);
+  color: var(--color-ink);
+
+  /* 日本語を語のまとまりで折り返す。これが無いと見出しが「を、」や
+     「キ／ーボード」で割れる。対応していないブラウザでは従来どおり */
+  word-break: auto-phrase;
+}
+
+/* 見出しの書体。角の立った太字（Hawky と同じ） */
+.display {
+  font-family: var(--font-display), var(--font-body), sans-serif;
+  letter-spacing: 0.01em;
+}
+
+/* アイコンと同じ向きのグラデーション */
+.sky {
+  background: linear-gradient(
+    160deg,
+    var(--color-sprout) 0%,
+    var(--color-leaf) 55%,
+    var(--color-leaf-deep) 100%
+  );
+}
+
+/* しゃべる鸚鵡の吹き出し。区画の上に、淡い丸をいくつか浮かべる */
+.chatter {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 12% 18%, rgb(255 255 255 / 0.1) 0 70px, transparent 71px),
+    radial-gradient(circle at 88% 12%, rgb(255 255 255 / 0.08) 0 110px, transparent 111px),
+    radial-gradient(circle at 78% 88%, rgb(255 255 255 / 0.07) 0 90px, transparent 91px);
+  pointer-events: none;
+}

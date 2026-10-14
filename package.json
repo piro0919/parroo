@@ -1,0 +1,8 @@
+{
+  "name": "parroo",
+  "private": true,
+  "scripts": {
+    "lp:dev": "pnpm --filter parroo-lp dev",
+    "lp:build": "pnpm --filter parroo-lp build"
+  }
+}
