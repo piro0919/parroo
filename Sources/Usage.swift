@@ -60,9 +60,9 @@ enum UsageError: Error, Equatable {
 enum UsageClient {
     static let endpoint = URL(string: "https://api.anthropic.com/api/oauth/usage")!
 
-    static func fetch(claudeDir: URL) async -> Result<Usage, UsageError> {
+    static func fetch(claudeDir: URL, raw: String?) async -> Result<Usage, UsageError> {
         let token: String
-        switch accessToken(service: Paths.keychainService(claudeDir: claudeDir, home: Paths.home)) {
+        switch accessToken(services: Paths.keychainServices(claudeDir: claudeDir, raw: raw, home: Paths.home)) {
         case .success(let value): token = value
         case .failure(let error): return .failure(error)
         }
@@ -83,6 +83,15 @@ enum UsageClient {
         } catch {
             return .failure(.network)
         }
+    }
+
+    /// 候補の項目名を順に探し、見つかった最初のもので決める
+    static func accessToken(services: [String]) -> Result<String, UsageError> {
+        for service in services {
+            let result = accessToken(service: service)
+            if result != .failure(.noCredentials) { return result }
+        }
+        return .failure(.noCredentials)
     }
 
     /// キーチェーンから、Claude Code が保存したアクセス用のトークンを読む。
@@ -135,9 +144,11 @@ enum UsageClient {
                 let name = model["display_name"] as? String,
                 let percent = number(limit["percent"] ?? limit["utilization"])
             else { continue }
-            guard !usage.models.contains(where: { $0.name.caseInsensitiveCompare(name) == .orderedSame }) else {
-                continue
+            // 固定の欄の「Opus」と、一覧の「Claude Opus 4.1」のように、同じ枠が名前を変えて両方に来ることがある
+            let known = usage.models.contains {
+                name.localizedCaseInsensitiveContains($0.name) || $0.name.localizedCaseInsensitiveContains(name)
             }
+            guard !known else { continue }
             usage.models.append(
                 ModelWindow(name: name, window: UsageWindow(percent: percent, resetsAt: date(limit["resets_at"]))))
         }

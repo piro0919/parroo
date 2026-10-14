@@ -5,7 +5,10 @@ import AppKit
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
     private var settingsWindow = SettingsWindowController()
-    private let conversations = Conversations()
+    private let conversations = ConversationStore()
+    /// 裏で読んだ会話の一覧。メニューはこれを出し、読み終わったら差し替える
+    private var openConversations: [Conversation] = []
+    private var loadingConversations = false
 
     private var usage: Usage?
     private var lastError: UsageError?
@@ -13,6 +16,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var fetchedAt: Date?
     private var lastAttempt: Date?
     private var fetching = false
+    /// 取っている最中に取り直しを頼まれた。終わったらもう一度取る
+    private var refetch = false
+    /// 設定フォルダを変えるたびに進める。変える前に出した問い合わせの結果は捨てる
+    private var generation = 0
     private var menuIsOpen = false
     private var timers: [Timer] = []
 
@@ -31,6 +38,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // リセットまでの時間は、取り直さなくても毎分進む
         timers.append(repeating(30) { [weak self] in self?.drawStatus() })
         timers.append(repeating(Self.fetchInterval) { [weak self] in self?.fetch() })
+        // 会話の記録は増え続ける。開いたときに待たせないよう、裏で読み進めておく
+        timers.append(repeating(30) { [weak self] in self?.refreshConversations() })
 
         let center = NotificationCenter.default
         for name in [Notification.Name.statusLinesChanged, .languageChanged] {
@@ -48,8 +57,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 if wasVisible { self.settingsWindow.show() }
             }
         }
+        // 設定フォルダを変えたら、別のアカウントかもしれない。前の値を捨てて取り直す
         center.addObserver(forName: .claudeDirChanged, object: nil, queue: .main) { [weak self] _ in
-            MainActor.assumeIsolated { self?.fetch() }
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                self.generation += 1
+                self.usage = nil
+                self.lastError = nil
+                self.fetchedAt = nil
+                self.openConversations = []
+                self.drawStatus()
+                self.fetch()
+                self.refreshConversations()
+            }
         }
         // スリープの間に枠がリセットされていることがある
         NSWorkspace.shared.notificationCenter.addObserver(
@@ -60,6 +80,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         drawStatus()
         fetch()
+        refreshConversations()
         Updater.shared.checkQuietly()
         if CommandLine.arguments.contains("--settings") { openSettings() }
     }
@@ -75,13 +96,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func fetch() {
-        guard !fetching else { return }
+        guard !fetching else {
+            refetch = true
+            return
+        }
         fetching = true
         lastAttempt = Date()
         let dir = Paths.claudeDir
+        let raw = Paths.claudeDirRaw
+        let started = generation
         Task {
-            let result = await UsageClient.fetch(claudeDir: dir)
+            let result = await UsageClient.fetch(claudeDir: dir, raw: raw)
             fetching = false
+            defer {
+                if refetch {
+                    refetch = false
+                    fetch()
+                }
+            }
+            guard started == generation else { return }
             switch result {
             case .success(let value):
                 usage = value
@@ -92,6 +125,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 lastError = error
             }
             drawStatus()
+            if menuIsOpen, let menu = item.menu { rebuildMenu(menu) }
+        }
+    }
+
+    private func refreshConversations() {
+        guard !loadingConversations else { return }
+        loadingConversations = true
+        let dir = Paths.claudeDir
+        let started = generation
+        Task {
+            let list = await conversations.load(claudeDir: dir)
+            loadingConversations = false
+            guard started == generation, list != openConversations else { return }
+            openConversations = list
             if menuIsOpen, let menu = item.menu { rebuildMenu(menu) }
         }
     }
@@ -143,7 +190,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(.separator())
 
         // 開いている会話を、フォルダごとに見出しで分ける
-        let open = conversations.load()
+        let open = openConversations
         if open.isEmpty {
             let empty = NSMenuItem(title: Strings.noConversations, action: nil, keyEquivalent: "")
             empty.isEnabled = false
@@ -155,9 +202,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             let titleWidth = titles.map { width($0, font: font) }.max() ?? 0
             // 題名の右に間を空け、トークン数を右で揃える
             let tab = ceil(titleWidth + 32 + tokenWidth)
-            let groups = Dictionary(grouping: open, by: \.folderName).sorted { $0.key < $1.key }
-            for (folder, items) in groups {
-                menu.addItem(.sectionHeader(title: folder))
+            let headers = ConversationStore.headers(for: open.map(\.cwd))
+            let groups = Dictionary(grouping: open, by: \.cwd).map { (headers[$0.key] ?? $0.key, $0.value) }
+                .sorted { $0.0 < $1.0 }
+            for (header, items) in groups {
+                menu.addItem(.sectionHeader(title: header))
                 for c in items.sorted(by: { $0.title < $1.title }) {
                     menu.addItem(conversationRow(c, tab: tab, font: font))
                 }
@@ -219,6 +268,7 @@ extension AppDelegate: NSMenuDelegate {
     /// 開かれる直前に組み直す。古ければ取り直し、届いたら開いたまま差し替える
     func menuNeedsUpdate(_ menu: NSMenu) {
         rebuildMenu(menu)
+        refreshConversations()
         if lastAttempt.map({ Date().timeIntervalSince($0) > Self.staleAfter }) ?? true { fetch() }
     }
 

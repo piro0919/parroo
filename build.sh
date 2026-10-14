@@ -17,7 +17,10 @@ SPARKLE_SHA256="015336b601493e05c237964954bff6191370003d94edefe663724c88840d73cc
 # 暫定署名だとビルドのたびに同一性が変わり、キーチェーンの許可が毎回外れる。
 # 証明書があればそれを使う。CI には無いので暫定署名に落ちる
 SIGN_IDENTITY="${PARROO_SIGN_IDENTITY:-Okigae Dev}"
-if ! security find-identity -v -p codesigning | grep -q "$SIGN_IDENTITY"; then
+# 出力は変数に受けてから調べる。grep -q が一致した時点で読むのをやめると security が SIGPIPE で落ち、
+# pipefail の下では証明書があっても無いとみなされる（release.sh の codesign と同じ）
+IDENTITIES="$(security find-identity -v -p codesigning)"
+if ! grep -qF "$SIGN_IDENTITY" <<<"$IDENTITIES"; then
   # release.sh はこれを立てて呼ぶ。暫定署名のまま配ると、更新のたびに利用者の許可が外れる
   if [ "${PARROO_REQUIRE_IDENTITY:-0}" = "1" ]; then
     echo "エラー: 証明書「${SIGN_IDENTITY}」が見つかりません。暫定署名のままでは配れません" >&2

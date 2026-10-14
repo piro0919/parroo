@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
-import { languageAlternates, localePath } from "@/i18n/urls";
+import { languageAlternates, localePath, ogAlternateLocales, ogLocale } from "@/i18n/urls";
 
 type Section = { title: string; body: string };
 
@@ -19,6 +19,15 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     alternates: {
       canonical: localePath(locale, "/privacy"),
       languages: languageAlternates("/privacy"),
+    },
+    // openGraph も親から丸ごと受け継ぐので、書かないと og:url がトップを指す
+    openGraph: {
+      alternateLocale: ogAlternateLocales(locale),
+      description: t("intro"),
+      locale: ogLocale(locale),
+      title: t("title"),
+      type: "website",
+      url: localePath(locale, "/privacy"),
     },
   };
 }

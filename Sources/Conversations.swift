@@ -2,24 +2,22 @@ import Darwin
 import Foundation
 
 /// 今開いている会話1つ
-struct Conversation: Equatable {
+struct Conversation: Equatable, Sendable {
     var sessionID: String
-    /// 会話を開いているフォルダ。メニューではこの名前で分ける
+    /// 会話を開いているフォルダ。メニューではフォルダごとに見出しで分ける
     var cwd: String
     var title: String
     var tokens: Int
-
-    var folderName: String { URL(fileURLWithPath: cwd).lastPathComponent }
 }
 
 /// 今開いている会話と、それぞれのトークン数を集める。
-/// 会話の記録は長くなるので、前回読んだところから先だけを読む
-@MainActor
-final class Conversations {
+/// 会話の記録は数百 MB になることがある（手元の最大は 262MB）。主のスレッドを止めないよう actor で読み、
+/// 前回読んだところから先だけを少しずつ読む
+actor ConversationStore {
     private var tallies: [String: Tally] = [:]
 
-    func load() -> [Conversation] {
-        let open = Self.openSessions(in: Paths.sessionsDir)
+    func load(claudeDir: URL) -> [Conversation] {
+        let open = Self.openSessions(in: claudeDir.appendingPathComponent("sessions"))
         // 閉じた会話の集計は捨てる
         tallies = tallies.filter { id, _ in open.contains { $0.sessionID == id } }
         return open.compactMap { session in
@@ -27,7 +25,8 @@ final class Conversations {
             if let known = tallies[session.sessionID] {
                 tally = known
             } else {
-                guard let url = Self.transcript(for: session, in: Paths.projectsDir) else { return nil }
+                let projects = claudeDir.appendingPathComponent("projects")
+                guard let url = Self.transcript(for: session, in: projects) else { return nil }
                 tally = Tally(url: url)
                 tallies[session.sessionID] = tally
             }
@@ -41,16 +40,19 @@ final class Conversations {
         var pid: Int32
         var sessionID: String
         var cwd: String
+        /// プロセスが起動した時刻。番号が別のプロセスに使い回されていないかを見るのに使う
+        var processStart: Date?
     }
 
     /// Claude Code は動いている間 `sessions/<pid>.json` を置き、会話の id と作業フォルダを書く。
-    /// そのプロセスが居て、エディタに置き去りにされていなければ、開いているとみなす
+    /// そのプロセスが居て、エディタに置き去りにされておらず、起動時刻も合っていれば、開いているとみなす
     static func openSessions(in dir: URL) -> [Session] {
         let files = (try? FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil)) ?? []
         return files.filter { $0.pathExtension == "json" }.compactMap { file in
             guard let data = try? Data(contentsOf: file),
                 let session = parseSession(data),
-                Processes.isAlive(session.pid), !Processes.isOrphanedFromEditor(session.pid)
+                Processes.isAlive(session.pid), !Processes.isOrphanedFromEditor(session.pid),
+                Processes.startMatches(session.pid, session.processStart)
             else { return nil }
             return session
         }
@@ -64,7 +66,17 @@ final class Conversations {
             let cwd = obj["cwd"] as? String
         else { return nil }
         if let kind = obj["kind"] as? String, kind != "interactive" { return nil }
-        return Session(pid: pid, sessionID: id, cwd: cwd)
+        return Session(pid: pid, sessionID: id, cwd: cwd, processStart: processStart(obj["procStart"]))
+    }
+
+    /// `Wed Oct 14 18:59:59 2026` の形で、UTC で書かれている（`ps -o lstart` と照らして確認）
+    static func processStart(_ value: Any?) -> Date? {
+        guard let text = value as? String else { return nil }
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone(identifier: "UTC")
+        formatter.dateFormat = "EEE MMM d HH:mm:ss yyyy"
+        return formatter.date(from: text.split(separator: " ", omittingEmptySubsequences: true).joined(separator: " "))
     }
 
     /// 記録は `projects/<作業フォルダの英数字以外を - にした名前>/<id>.jsonl`。
@@ -82,17 +94,41 @@ final class Conversations {
     static func encode(_ cwd: String) -> String {
         String(cwd.map { $0.isASCII && ($0.isLetter || $0.isNumber) ? $0 : "-" })
     }
+
+    /// メニューの見出し。ふつうはフォルダ名だけ。同じ名前のフォルダが2つ以上あるときは、
+    /// 違いが出るところまで親のフォルダ名を足す（~/work/app と ~/personal/app を分ける）
+    static func headers(for cwds: [String]) -> [String: String] {
+        let unique = Array(Set(cwds))
+        let parts = Dictionary(uniqueKeysWithValues: unique.map { ($0, URL(fileURLWithPath: $0).pathComponents) })
+        var result: [String: String] = [:]
+        for cwd in unique {
+            let mine = parts[cwd] ?? []
+            var depth = 1
+            while depth < mine.count {
+                let label = mine.suffix(depth)
+                let clash = unique.contains { other in other != cwd && (parts[other] ?? []).suffix(depth) == label }
+                if !clash { break }
+                depth += 1
+            }
+            result[cwd] = mine.suffix(depth).filter { $0 != "/" }.joined(separator: "/")
+        }
+        return result
+    }
 }
 
 /// 会話の記録1つの集計。読んだところまでを覚えておき、増えた分だけ読む
-@MainActor
 final class Tally {
     let url: URL
     private var offset: UInt64 = 0
+    /// 読んでいるファイルの番号。置き換えられたら、長さに関わらず頭から読み直す
+    private var fileNumber: Int?
     /// 同じ返答が何行かに分けて書かれることがある。返答の id ごとに最後の行の値を使う
     private var perMessage: [String: Int] = [:]
     private var aiTitle: String?
     private var firstPrompt: String?
+
+    /// 一度に読む量。数百 MB の記録を丸ごと抱えない
+    private static let chunk = 4 << 20
 
     init(url: URL) { self.url = url }
 
@@ -104,18 +140,46 @@ final class Tally {
     var title: String? { aiTitle ?? firstPrompt }
 
     func read() {
+        let number = (try? FileManager.default.attributesOfItem(atPath: url.path))?[.systemFileNumber] as? Int
         guard let handle = try? FileHandle(forReadingFrom: url) else { return }
         defer { try? handle.close() }
         guard let end = try? handle.seekToEnd() else { return }
-        // 記録が作り直されて短くなったら、頭から読み直す
-        if end < offset { reset() }
-        guard end > offset else { return }
-        try? handle.seek(toOffset: offset)
-        guard let data = try? handle.read(upToCount: Int(end - offset)) else { return }
-        // 書きかけの行は次に回す。最後の改行までを読む
-        guard let last = data.lastIndex(of: UInt8(ascii: "\n")) else { return }
-        consume(data[data.startIndex...last])
-        offset += UInt64(last - data.startIndex + 1)
+        // 記録が作り直されたら、頭から読み直す
+        if end < offset || number != fileNumber { reset() }
+        fileNumber = number
+        while offset < end {
+            try? handle.seek(toOffset: offset)
+            guard let data = try? handle.read(upToCount: min(Self.chunk, Int(end - offset))), !data.isEmpty
+            else { return }
+            // 書きかけの行は次に回す。最後の改行までを読む
+            guard let last = data.lastIndex(of: UInt8(ascii: "\n")) else {
+                // 1行が一度に読む量より長い。改行が見つかるまで広げて読む
+                guard let line = readLine(handle, from: offset, end: end) else { return }
+                consume(line)
+                offset += UInt64(line.count)
+                continue
+            }
+            consume(data[data.startIndex...last])
+            offset += UInt64(last - data.startIndex + 1)
+        }
+    }
+
+    /// 改行までの1行を、改行ごと読む。改行がまだ書かれていなければ nil
+    private func readLine(_ handle: FileHandle, from start: UInt64, end: UInt64) -> Data? {
+        var line = Data()
+        var position = start
+        while position < end {
+            try? handle.seek(toOffset: position)
+            guard let data = try? handle.read(upToCount: min(Self.chunk, Int(end - position))), !data.isEmpty
+            else { return nil }
+            if let newline = data.firstIndex(of: UInt8(ascii: "\n")) {
+                line.append(data[data.startIndex...newline])
+                return line
+            }
+            line.append(data)
+            position += UInt64(data.count)
+        }
+        return nil
     }
 
     private func reset() {
@@ -125,9 +189,17 @@ final class Tally {
         firstPrompt = nil
     }
 
+    private static let assistantMark = Data(#""type":"assistant""#.utf8)
+    private static let titleMark = Data(#""type":"ai-title""#.utf8)
+    private static let userMark = Data(#""type":"user""#.utf8)
+
     func consume(_ data: Data) {
         for line in data.split(separator: UInt8(ascii: "\n")) {
-            guard let obj = try? JSONSerialization.jsonObject(with: line) as? [String: Any] else { continue }
+            // 行の大半はツールの出力で、要らない。JSON として読む前に、印の文字列で振り分ける
+            let wanted =
+                line.range(of: Self.assistantMark) != nil || line.range(of: Self.titleMark) != nil
+                || (firstPrompt == nil && line.range(of: Self.userMark) != nil)
+            guard wanted, let obj = try? JSONSerialization.jsonObject(with: line) as? [String: Any] else { continue }
             apply(obj)
         }
     }
@@ -144,6 +216,7 @@ final class Tally {
             let keys = ["input_tokens", "output_tokens", "cache_creation_input_tokens"]
             perMessage[id] = keys.reduce(0) { $0 + ((usage[$1] as? NSNumber)?.intValue ?? 0) }
         case "user":
+            // 人が送った文には origin.kind が human と付く。中断の印や無人の実行の文には付かない
             guard firstPrompt == nil,
                 (obj["origin"] as? [String: Any])?["kind"] as? String == "human",
                 let message = obj["message"] as? [String: Any],
@@ -191,6 +264,21 @@ enum Processes {
         let parent = parentPID(of: pid)
         guard parent > 1, processName(parent).contains("Helper") else { return false }
         return parentPID(of: parent) == 1
+    }
+
+    /// 目印に書かれた起動時刻と、その番号のプロセスの起動時刻が合うか。
+    /// Claude Code が強制終了すると目印が残り、のちに同じ番号が別のプロセスに付くことがある。
+    /// 目印に時刻が無ければ確かめようがないので、合っているとみなす
+    static func startMatches(_ pid: Int32, _ expected: Date?) -> Bool {
+        guard let expected, let actual = startTime(of: pid) else { return true }
+        return abs(actual.timeIntervalSince(expected)) < 2
+    }
+
+    static func startTime(of pid: Int32) -> Date? {
+        var info = proc_bsdinfo()
+        let size = Int32(MemoryLayout<proc_bsdinfo>.size)
+        guard proc_pidinfo(pid, PROC_PIDTBSDINFO, 0, &info, size) == size else { return nil }
+        return Date(timeIntervalSince1970: TimeInterval(info.pbi_start_tvsec))
     }
 
     static func parentPID(of pid: Int32) -> Int32 {

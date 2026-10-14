@@ -28,17 +28,30 @@ enum Paths {
     /// 会話の記録。`<作業フォルダを詰めた名前>/<会話の id>.jsonl`
     static var projectsDir: URL { claudeDir.appendingPathComponent("projects") }
 
-    /// ログイン情報が入っているキーチェーンの項目名。
+    /// ログイン情報が入っているキーチェーンの項目名の候補。前から順に探す。
     /// Claude Code は設定フォルダを既定から移していると、そのパスの SHA-256 の頭8桁を後ろに付ける
-    /// （2.1.299 の本体で `Claude Code${suffix}-credentials${-hash}` の組み立てを確認）
-    static func keychainService(claudeDir: URL, home: URL) -> String {
+    /// （2.1.299 の本体で `Claude Code${suffix}-credentials${-hash}` の組み立てを確認）。
+    /// Claude Code がパスをどう書いた形で数えるかは確かめていないので、書き方の揺れ（末尾の /、
+    /// /tmp と /private/tmp）をいくつか試す
+    static func keychainServices(claudeDir: URL, raw: String?, home: URL) -> [String] {
         let base = "Claude Code-credentials"
         let standard = home.appendingPathComponent(".claude").standardizedFileURL.path
         let path = claudeDir.standardizedFileURL.path
-        guard path != standard else { return base }
-        let digest = SHA256.hash(data: Data(path.precomposedStringWithCanonicalMapping.utf8))
-        let hex = digest.map { String(format: "%02x", $0) }.joined()
-        return "\(base)-\(hex.prefix(8))"
+        guard path != standard else { return [base] }
+        var forms = [path, claudeDir.resolvingSymlinksInPath().path]
+        if let raw, !raw.isEmpty { forms.insert(raw, at: 0) }
+        forms += forms.map { $0.hasSuffix("/") ? String($0.dropLast()) : $0 + "/" }
+        var seen = Set<String>()
+        return forms.filter { seen.insert($0).inserted }.map { form in
+            let digest = SHA256.hash(data: Data(form.precomposedStringWithCanonicalMapping.utf8))
+            let hex = digest.map { String(format: "%02x", $0) }.joined()
+            return "\(base)-\(hex.prefix(8))"
+        }
+    }
+
+    /// 設定フォルダを指す、利用者が書いたままの文字列。キーチェーンの項目名を探すのに使う
+    static var claudeDirRaw: String? {
+        Preferences.claudeDir ?? ProcessInfo.processInfo.environment["CLAUDE_CONFIG_DIR"]
     }
 
     /// 画面に出すときは、ホームを `~` に縮める

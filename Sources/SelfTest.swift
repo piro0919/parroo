@@ -33,6 +33,11 @@ enum SelfTest {
             check(usage?.model("Opus")?.percent == 30, "固定の欄から Opus を読む")
             check(usage?.model("Sonnet")?.percent == 20, "名前付きの一覧から Sonnet を読む")
             check(usage?.models.count == 2, "週の枠でない一覧の行は読まない")
+            let doubled = UsageClient.parse(
+                Data(
+                    #"{"seven_day":{"utilization":1},"seven_day_opus":{"utilization":30},"limits":[{"kind":"weekly_scoped","percent":31,"scope":{"model":{"display_name":"Claude Opus 4.1"}}}]}"#
+                        .utf8))
+            check(doubled?.models.count == 1, "固定の欄と一覧に同じモデルが来たら1つにする")
             check(usage?.extra == ExtraUsage(used: 1240, limit: 5000, currency: "USD"), "追加の従量課金を読む")
 
             let disabled = UsageClient.parse(
@@ -58,10 +63,14 @@ enum SelfTest {
         do {
             let home = URL(fileURLWithPath: "/Users/someone")
             check(
-                Paths.keychainService(claudeDir: home.appendingPathComponent(".claude"), home: home)
-                    == "Claude Code-credentials", "既定のフォルダなら後ろに何も付けない")
-            let moved = Paths.keychainService(claudeDir: URL(fileURLWithPath: "/tmp/claude-work"), home: home)
-            check(moved.hasPrefix("Claude Code-credentials-") && moved.count == 24 + 8, "移したフォルダなら8桁を付ける")
+                Paths.keychainServices(claudeDir: home.appendingPathComponent(".claude"), raw: nil, home: home)
+                    == ["Claude Code-credentials"], "既定のフォルダなら後ろに何も付けない")
+            let moved = Paths.keychainServices(
+                claudeDir: URL(fileURLWithPath: "/Users/someone/work"), raw: "/Users/someone/work/", home: home)
+            check(
+                moved.allSatisfy { $0.hasPrefix("Claude Code-credentials-") && $0.count == 24 + 8 },
+                "移したフォルダなら8桁を付ける")
+            check(moved.count == 2 && Set(moved).count == 2, "末尾の / の有無を両方試し、同じ候補は重ねない")
         }
 
         // メニューバーの2行
@@ -113,17 +122,65 @@ enum SelfTest {
             check(Tally.shorten(String(repeating: "あ", count: 40)).count == 31, "長い文は30文字で詰める")
         }
 
+        // 記録のファイルを少しずつ読む。一度に読む量より長い行、書きかけの行、作り直されたファイル
+        do {
+            let dir = FileManager.default.temporaryDirectory.appendingPathComponent("parroo-selftest-\(getpid())")
+            try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+            defer { try? FileManager.default.removeItem(at: dir) }
+            let url = dir.appendingPathComponent("t.jsonl")
+            func line(_ id: String, _ output: Int) -> String {
+                #"{"type":"assistant","message":{"id":"\#(id)","usage":{"output_tokens":\#(output)}}}"# + "\n"
+            }
+            // ツールの出力のような 5MB の行を挟む
+            let huge = #"{"type":"user","toolUseResult":"\#(String(repeating: "x", count: 5 << 20))"}"# + "\n"
+            try? (line("a", 1) + huge + line("b", 2) + #"{"type":"assistant","message":{"id":"c""#).write(
+                to: url, atomically: false, encoding: .utf8)
+            let tally = Tally(url: url)
+            tally.read()
+            check(tally.tokens == 3, "長い行をまたいで読み、書きかけの行は数えない")
+
+            if let handle = try? FileHandle(forWritingTo: url) {
+                _ = try? handle.seekToEnd()
+                try? handle.write(contentsOf: Data((#","usage":{"output_tokens":4}}}"# + "\n").utf8))
+                try? handle.close()
+            }
+            tally.read()
+            check(tally.tokens == 7, "書きかけだった行は、書き終わってから数える")
+
+            // 別のファイルで置き換える。長さが前より長くても頭から読み直す
+            let replacement = dir.appendingPathComponent("r.jsonl")
+            let padding = #"{"type":"user","pad":"\#(String(repeating: "y", count: 4096))"}"# + "\n"
+            try? (line("z", 10) + huge + padding).write(to: replacement, atomically: false, encoding: .utf8)
+            _ = try? FileManager.default.replaceItemAt(url, withItemAt: replacement)
+            tally.read()
+            check(tally.tokens == 10, "置き換えられた記録は頭から読み直す")
+        }
+
         // 開いている会話の目印
         do {
             let session = #"{"pid":123,"sessionId":"abc","cwd":"/Users/piro/Repository/parroo","kind":"interactive"}"#
             check(
-                Conversations.parseSession(Data(session.utf8))
-                    == .init(pid: 123, sessionID: "abc", cwd: "/Users/piro/Repository/parroo"), "目印を読む")
-            let headless = #"{"pid":1,"sessionId":"x","cwd":"/","kind":"print"}"#
-            check(Conversations.parseSession(Data(headless.utf8)) == nil, "無人の実行は数えない")
+                ConversationStore.parseSession(Data(session.utf8))
+                    == .init(pid: 123, sessionID: "abc", cwd: "/Users/piro/Repository/parroo", processStart: nil),
+                "目印を読む")
             check(
-                Conversations.encode("/Users/piro/.claude/skills") == "-Users-piro--claude-skills",
+                ConversationStore.processStart("Wed Oct 14 18:59:59 2026")
+                    == Date(timeIntervalSince1970: 1_792_004_399),
+                "目印の起動時刻は UTC で読む")
+            check(
+                ConversationStore.processStart("Sun Oct  4 09:05:00 2026") != nil, "1桁の日の前の空白が2つでも読む")
+            let headless = #"{"pid":1,"sessionId":"x","cwd":"/","kind":"print"}"#
+            check(ConversationStore.parseSession(Data(headless.utf8)) == nil, "無人の実行は数えない")
+            check(
+                ConversationStore.encode("/Users/piro/.claude/skills") == "-Users-piro--claude-skills",
                 "記録のフォルダ名は英数字以外を - にする")
+            let headers = ConversationStore.headers(for: [
+                "/Users/piro/work/app", "/Users/piro/personal/app", "/Users/piro/Repository/parroo",
+            ])
+            check(headers["/Users/piro/Repository/parroo"] == "parroo", "見出しはふつうフォルダ名だけ")
+            check(
+                headers["/Users/piro/work/app"] == "work/app" && headers["/Users/piro/personal/app"] == "personal/app",
+                "同じ名前のフォルダは親の名前を足して分ける")
         }
 
         if failures == 0 { print("selftest: すべて通りました") }
