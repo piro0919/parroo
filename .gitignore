@@ -11,3 +11,4 @@ node_modules/
 lp/public/sitemap*.xml
 lp/public/robots.txt
 __pycache__/
+.vercel
