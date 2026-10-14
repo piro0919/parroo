@@ -110,6 +110,37 @@ Claude Code の使用量の残りと、次のリセット日時を、日本語�
       題名は transcript の最後の `ai-title` を使う
   - 「10:42 に更新」は最後に値を取れた時刻。公開されていない経路が動かなくなったとき、数字が古いと気付けるように置く
 
+## 仕組み
+
+- **使用量**: キーチェーンの `Claude Code-credentials` から `claudeAiOauth.accessToken` を読み、
+  `GET https://api.anthropic.com/api/oauth/usage` に `Authorization: Bearer` と `anthropic-beta: oauth-2025-04-20` を付けて問い合わせる
+  （`Sources/Usage.swift`）。2分ごとと、メニューを開いたとき前回から1分過ぎていれば取り直す
+  - 応答の形は 2.1.299 の本体の型の定義から読んだ。使用率はパーセント（0〜100）、`resets_at` は ISO 8601、
+    `extra_usage` の額は通貨の最小単位（ドルならセント）
+  - モデルごとの週の枠は `seven_day_opus` / `seven_day_sonnet` のほか、`limits[]` の `kind: weekly_scoped` に
+    `scope.model.display_name` 付きで来る。本人のアカウントでは Opus・Sonnet は無く、`Fable` だけだった（2026-10-15）
+  - **トークンは更新しない。** 更新すると更新用トークンが入れ替わり、Claude Code のログインが外れるおそれがある。
+    期限切れ（`expiresAt` を過ぎたか 401）なら「Claude Code を使うと戻る」と出して待つ
+  - 設定フォルダを既定から移していると、キーチェーンの項目名の後ろに `-<パスの SHA-256 の頭8桁>` が付く（`Paths.keychainService`）
+  - 初回は macOS がキーチェーンの許可を尋ねる。「常に許可」を押してもらう。署名が毎回変わると許可が外れるので、
+    手元のビルドも「Okigae Dev」の証明書で署名する（build.sh）
+- **会話**: `Sources/Conversations.swift`。`sessions/<pid>.json` のうち、プロセスが居て置き去りでないもの。
+  記録は前回読んだ位置から先だけを読み、書きかけの行は次に回す
+- **メニューバー**: `Sources/StatusTitle.swift`。Hawky の描き方を写し、影絵と文字を1枚のテンプレート画像にする。
+  2行は左で揃える
+- 本人の Mac はメニューバーの常駐アイコンが埋まっていて、Parroo は画面の外（x が -9000 台）に追いやられる。
+  見た目は `Parroo --render-status <png>` で見本の値を描いて確かめる。メニューの中身は AX で `AXPress` して読める
+
+## 手元で動かす
+
+```sh
+./build.sh
+./Parroo.app/Contents/MacOS/Parroo --selftest
+open ./Parroo.app
+```
+
+リリースは `./release.sh <版>` のあと、スキル `mac-release` の手順でタップの cask を上げる。
+
 ## アイコン
 
 `assets/icon-source.png` が原画。ChatGPT で作った、四隅まで塗り切った正方形で、依頼文は `docs/art-prompt.md`（2026-10-15）。
