@@ -9,7 +9,7 @@ export async function DesktopMock() {
 
   return (
     <div className="wallpaper relative h-[520px] w-full overflow-hidden rounded-[28px] ring-1 ring-white/10 sm:h-[560px]">
-      <Waves />
+      <Waves id="hero" />
 
       {/* メニューバー */}
       <div className="relative flex h-7 items-center justify-between bg-black/25 px-4 text-[13px] text-white backdrop-blur-md">
@@ -72,8 +72,9 @@ export function StatusLines({
   );
 }
 
-/// 壁紙の波。Sleeve の見出しの絵にある、下から立ち上がる明るい波
-export function Waves() {
+/// 壁紙の波。Sleeve の見出しの絵にある、下から立ち上がる明るい波。
+/// 1ページに2つ置くので、塗りの id は呼ぶ側で分ける
+export function Waves({ id }: { id: string }) {
   return (
     <svg
       aria-hidden="true"
@@ -82,22 +83,22 @@ export function Waves() {
       viewBox="0 0 900 340"
     >
       <defs>
-        <linearGradient id="wave-a" x1="0" x2="1" y1="0" y2="1">
+        <linearGradient id={`${id}-wave-a`} x1="0" x2="1" y1="0" y2="1">
           <stop offset="0" stopColor="#3ccb7f" />
           <stop offset="1" stopColor="#17a463" />
         </linearGradient>
-        <linearGradient id="wave-b" x1="0" x2="1" y1="0" y2="0">
+        <linearGradient id={`${id}-wave-b`} x1="0" x2="1" y1="0" y2="0">
           <stop offset="0" stopColor="#0f6a4f" />
           <stop offset="1" stopColor="#0b4a3a" />
         </linearGradient>
       </defs>
       <path
         d="M0 80 C 180 40, 300 60, 420 170 S 700 330, 900 330 L 900 340 L 0 340 Z"
-        fill="url(#wave-b)"
+        fill={`url(#${id}-wave-b)`}
       />
       <path
         d="M0 170 C 160 120, 300 150, 430 240 S 720 330, 900 336 L 900 340 L 0 340 Z"
-        fill="url(#wave-a)"
+        fill={`url(#${id}-wave-a)`}
         opacity="0.9"
       />
     </svg>

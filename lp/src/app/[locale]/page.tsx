@@ -16,7 +16,7 @@ type PageProps = {
 };
 
 /// 白い主ボタンと、縁だけの副ボタン。Sleeve の「Mac App Store」「Buy Directly」の対
-function Buttons({ download }: { download: string }) {
+function Buttons({ download, homebrew }: { download: string; homebrew: string }) {
   return (
     <div className="flex flex-wrap justify-center gap-3">
       <a
@@ -29,7 +29,7 @@ function Buttons({ download }: { download: string }) {
         className="inline-flex h-14 items-center rounded-full px-7 font-semibold text-[17px] text-white ring-1 ring-white/20 transition hover:bg-white/5"
         href="#install"
       >
-        Homebrew
+        {homebrew}
       </a>
     </div>
   );
@@ -132,7 +132,7 @@ export default async function Page({ params }: PageProps) {
             {t("hero.lead")}
           </p>
           <div className="pt-4">
-            <Buttons download={t("hero.download")} />
+            <Buttons download={t("hero.download")} homebrew={t("hero.homebrew")} />
           </div>
           <p className="text-[14px] text-[var(--color-faint)]">{t("hero.requirement")}</p>
         </div>
@@ -147,7 +147,7 @@ export default async function Page({ params }: PageProps) {
         />
 
         <div className="wallpaper relative overflow-hidden rounded-[28px] ring-1 ring-white/10">
-          <Waves />
+          <Waves id="variants" />
           <div className="relative flex flex-wrap items-center justify-center gap-4 px-6 py-20 sm:gap-6 sm:py-28">
             {variants.map(([first, second]) => (
               <div
@@ -233,7 +233,7 @@ export default async function Page({ params }: PageProps) {
         </pre>
 
         <div className="flex flex-col items-center gap-5 text-center">
-          <Buttons download={t("install.cta")} />
+          <Buttons download={t("install.cta")} homebrew={t("hero.homebrew")} />
           <p className="max-w-xl text-[14px] text-[var(--color-faint)] leading-relaxed">
             {t("install.note")}
           </p>
