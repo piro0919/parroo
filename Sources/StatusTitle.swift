@@ -1,7 +1,9 @@
 import AppKit
 
-/// メニューバーの絵。鸚鵡の影絵の右に、選んだ項目を1行か2行で描く。
-/// NSStatusItem の title は1行しか出せないので、Hawky の StatusTitle を写して影絵ごと1枚の絵にする。
+/// メニューバーの絵。選んだ項目を1行か2行で描く。出す文字が無いときだけ、代わりに鸚鵡の影絵を描く。
+/// 文字があるときに影絵を外すのは、埋まりがちなメニューバーの幅を詰めるため（2026-10-15、本人と決めた）。
+/// 文字が無いときまで外すと幅が 0 になり、押せなくなる。
+/// NSStatusItem の title は1行しか出せないので、Hawky の StatusTitle を写して1枚の絵にする。
 /// テンプレート画像にしておけば、メニューバーの明暗に合わせて OS が色を付ける
 @MainActor
 enum StatusTitle {
@@ -37,17 +39,18 @@ enum StatusTitle {
             ? [height - (height - cap * 2 - 4) / 2 - cap, (height - cap * 2 - 4) / 2]
             : [(height - cap) / 2]
 
-        let textX = iconSize + 4
-        let width = texts.isEmpty ? iconSize : ceil(textX + (widths.max() ?? 0))
+        let width = texts.isEmpty ? iconSize : ceil(widths.max() ?? 0)
 
         let image = NSImage(size: NSSize(width: width, height: height), flipped: false) { _ in
-            icon?.draw(in: NSRect(x: 0, y: (height - iconSize) / 2, width: iconSize, height: iconSize))
+            if texts.isEmpty {
+                icon?.draw(in: NSRect(x: 0, y: (height - iconSize) / 2, width: iconSize, height: iconSize))
+            }
             guard let context = NSGraphicsContext.current?.cgContext else { return true }
             context.setFillColor(NSColor.black.cgColor)
             context.textMatrix = .identity
             // 2行は左で揃える。ラベル（1w: など）の頭が上下で並ぶ
             for (text, baseline) in zip(texts, baselines) {
-                context.textPosition = CGPoint(x: textX, y: baseline)
+                context.textPosition = CGPoint(x: 0, y: baseline)
                 CTLineDraw(text, context)
             }
             return true
