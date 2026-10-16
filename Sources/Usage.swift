@@ -1,5 +1,4 @@
 import Foundation
-import Security
 
 /// 使用量の枠1つ。使った割合と、リセットされる日時
 struct UsageWindow: Equatable {
@@ -95,23 +94,32 @@ enum UsageClient {
     }
 
     /// キーチェーンから、Claude Code が保存したアクセス用のトークンを読む。
-    /// 初回は macOS が「Parroo がキーチェーンの情報を使おうとしています」と尋ねる
+    /// Security.framework で直に読まず、Claude Code と同じく `/usr/bin/security` に読ませる。
+    /// Claude Code はトークンを更新するたびに `security add-generic-password -U` で項目を書き直し、
+    /// そのたびに Parroo への「常に許可」が外れて、許可の確認が何度も出た。項目を書いた `security` 自身は
+    /// 許可の一覧に載り続けるので、こちらは尋ねられない
     static func accessToken(service: String) -> Result<String, UsageError> {
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecReturnData as String: true,
-            kSecMatchLimit as String: kSecMatchLimitOne,
-        ]
-        var item: CFTypeRef?
-        let status = SecItemCopyMatching(query as CFDictionary, &item)
-        switch status {
-        case errSecSuccess: break
-        case errSecItemNotFound: return .failure(.noCredentials)
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/security")
+        process.arguments = ["find-generic-password", "-s", service, "-w"]
+        let output = Pipe()
+        process.standardOutput = output
+        process.standardError = FileHandle.nullDevice
+        do { try process.run() } catch { return .failure(.keychainDenied) }
+        // 確認の窓が出たまま放っておかれても、2分ごとの取り直しを止めない
+        let timeout = DispatchWorkItem { if process.isRunning { process.terminate() } }
+        DispatchQueue.global().asyncAfter(deadline: .now() + 15, execute: timeout)
+        let data = output.fileHandleForReading.readDataToEndOfFile()
+        process.waitUntilExit()
+        timeout.cancel()
+        switch process.terminationStatus {
+        case 0: break
+        // errSecItemNotFound
+        case 44: return .failure(.noCredentials)
         default: return .failure(.keychainDenied)
         }
-        guard let data = item as? Data else { return .failure(.noCredentials) }
-        return token(fromCredentials: data)
+        let text = String(decoding: data, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)
+        return token(fromCredentials: Data(text.utf8))
     }
 
     /// `{"claudeAiOauth": {"accessToken": "...", "expiresAt": <ミリ秒>}}` の形

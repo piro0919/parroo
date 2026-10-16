@@ -217,7 +217,7 @@ export default async function Page({ params }: PageProps) {
           title={t("install.title")}
         />
 
-        <div className="grid gap-6 md:grid-cols-3">
+        <div className="grid gap-6 md:grid-cols-2">
           {install.map((step, index) => (
             <Card className="flex flex-col gap-6 p-9" key={step.title}>
               <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-[var(--color-leaf)] font-bold text-lg tabular-nums">

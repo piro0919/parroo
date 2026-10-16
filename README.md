@@ -38,11 +38,6 @@ not an Apple Developer ID, so macOS cannot verify who made it. To let it through
 open **System Settings → Privacy & Security**, scroll to the bottom, and click
 **Open Anyway** next to the message about Parroo. You only do this once.
 
-Then macOS asks whether Parroo may use the confidential information stored in
-"Claude Code-credentials" in your keychain. Enter your login password and click
-**Always Allow**. **Allow** works too, but then macOS asks again every time
-Parroo refreshes.
-
 You need to be signed in to Claude Code with a Claude subscription (Pro, Max,
 Team or Enterprise). With an API key there are no plan limits to show.
 

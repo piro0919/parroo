@@ -4,6 +4,14 @@ Notable changes to Parroo. `release.sh` publishes the section for the version be
 its release notes, and stops if that section is missing or empty — so before releasing, rename
 `Unreleased` to `[x.y.z] - YYYY-MM-DD` and commit.
 
+## Unreleased
+
+### Fixed
+
+- macOS no longer keeps asking for keychain access. Claude Code rewrites its keychain item each
+  time it refreshes its sign-in, which dropped Parroo's "Always Allow". Parroo now reads the item
+  through the `security` command, the same way Claude Code does, so there is nothing to allow.
+
 ## [0.1.0] - 2026-10-15
 
 ### Added

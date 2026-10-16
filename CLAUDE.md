@@ -126,8 +126,10 @@ Claude Code の使用量の残りと、次のリセット日時を、日本語�
   - **トークンは更新しない。** 更新すると更新用トークンが入れ替わり、Claude Code のログインが外れるおそれがある。
     期限切れ（`expiresAt` を過ぎたか 401）なら「Claude Code を使うと戻る」と出して待つ
   - 設定フォルダを既定から移していると、キーチェーンの項目名の後ろに `-<パスの SHA-256 の頭8桁>` が付く（`Paths.keychainService`）
-  - 初回は macOS がキーチェーンの許可を尋ねる。「常に許可」を押してもらう。署名が毎回変わると許可が外れるので、
-    手元のビルドも「Okigae Dev」の証明書で署名する（build.sh）
+  - キーチェーンは Security.framework で直に読まず、`/usr/bin/security find-generic-password -w` に読ませる。
+    Claude Code はトークンを更新するたびに `security add-generic-password -U` で項目を書き直す（2.1.283 の本体で確認）。
+    直に読んでいた 0.1.0 では、書き直しのたびに「常に許可」が外れて確認が何度も出た（2026-10-16）。
+    `security` からは確認なしで読める。Claude Code も自分で同じ読み方をしている
 - **会話**: `Sources/Conversations.swift`。`sessions/<pid>.json` のうち、プロセスが居て置き去りでなく、
   `procStart`（UTC の `Wed Oct 14 18:59:59 2026` 形式）がそのプロセスの起動時刻と合うもの。合わなければ番号の使い回し
   - 記録は数百 MB になる（手元の最大は 262MB、20MB 超が28本、2026-10-15）。`ConversationStore` という actor で裏で読み、

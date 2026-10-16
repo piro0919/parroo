@@ -60,10 +60,6 @@
       {
         "title": "Let it open",
         "body": "In System Settings → Privacy & Security, click Open Anyway."
-      },
-      {
-        "title": "Allow the keychain",
-        "body": "When macOS asks about the keychain, click Always Allow."
       }
     ],
     "note": "You need to be signed in to Claude Code with a Claude subscription (Pro, Max, Team or Enterprise).",
